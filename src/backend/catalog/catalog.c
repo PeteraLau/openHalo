@@ -17,6 +17,8 @@
 
 #include "postgres.h"
 
+#include "storage/blockdev.h"
+
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -508,6 +510,13 @@ GetNewRelFileNode(Oid reltablespace, Relation pg_class, char relpersistence)
 		else
 			rnode.node.relNode = GetNewObjectId();
 
+#ifdef __linux__
+		if (bdhandles(rnode.node.spcNode, backend))
+		{
+			collides = smgrexists(smgropen(rnode.node, backend), MAIN_FORKNUM);
+			continue;
+		}
+#endif
 		/* Check for existing file of same name */
 		rpath = relpath(rnode, MAIN_FORKNUM);
 

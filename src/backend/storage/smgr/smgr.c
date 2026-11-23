@@ -19,6 +19,7 @@
 
 #include "access/xlog.h"
 #include "lib/ilist.h"
+#include "storage/blockdev.h"
 #include "storage/bufmgr.h"
 #include "storage/ipc.h"
 #include "storage/md.h"
@@ -82,7 +83,26 @@ static const f_smgr smgrsw[] = {
 		.smgr_nblocks = mdnblocks,
 		.smgr_truncate = mdtruncate,
 		.smgr_immedsync = mdimmedsync,
+	},
+#ifdef __linux__
+	{
+		.smgr_init = bdinit,
+		.smgr_shutdown = NULL,
+		.smgr_open = bdopen,
+		.smgr_close = bdclose,
+		.smgr_create = bdcreate,
+		.smgr_exists = bdexists,
+		.smgr_unlink = bdunlink,
+		.smgr_extend = bdextend,
+		.smgr_prefetch = bdprefetch,
+		.smgr_read = bdread,
+		.smgr_write = bdwrite,
+		.smgr_writeback = bdwriteback,
+		.smgr_nblocks = bdnblocks,
+		.smgr_truncate = bdtruncate,
+		.smgr_immedsync = bdimmedsync,
 	}
+#endif
 };
 
 static const int NSmgr = lengthof(smgrsw);
@@ -175,7 +195,11 @@ smgropen(RelFileNode rnode, BackendId backend)
 		reln->smgr_targblock = InvalidBlockNumber;
 		for (int i = 0; i <= MAX_FORKNUM; ++i)
 			reln->smgr_cached_nblocks[i] = InvalidBlockNumber;
-		reln->smgr_which = 0;	/* we only have md.c at present */
+		reln->smgr_which = 0;
+#ifdef __linux__
+		if (bdhandles(rnode.spcNode, backend))
+			reln->smgr_which = 1;
+#endif
 
 		/* implementation-specific initialization */
 		smgrsw[reln->smgr_which].smgr_open(reln);

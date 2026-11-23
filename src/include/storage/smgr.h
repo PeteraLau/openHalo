@@ -70,6 +70,7 @@ typedef struct SMgrRelationData
 
 	/* if unowned, list link in list of all unowned SMgrRelations */
 	dlist_node	node;
+	int			blockdev_file;	/* lazily opened device VFD */
 } SMgrRelationData;
 
 typedef SMgrRelationData *SMgrRelation;

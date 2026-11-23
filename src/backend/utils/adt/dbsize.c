@@ -26,6 +26,7 @@
 #include "utils/acl.h"
 #include "utils/builtins.h"
 #include "utils/numeric.h"
+#include "storage/blockdev.h"
 #include "utils/rel.h"
 #include "utils/relfilenodemap.h"
 #include "utils/relmapper.h"
@@ -277,6 +278,14 @@ calculate_relation_size(RelFileNode *rfn, BackendId backend, ForkNumber forknum)
 	char		pathname[MAXPGPATH];
 	unsigned int segcount = 0;
 
+#ifdef __linux__
+	if (bdhandles(rfn->spcNode, backend))
+	{
+		SMgrRelation rel = smgropen(*rfn, backend);
+
+		return smgrexists(rel, forknum) ? (int64) smgrnblocks(rel, forknum) * BLCKSZ : 0;
+	}
+#endif
 	relationpath = relpathbackend(*rfn, backend, forknum);
 
 	for (segcount = 0;; segcount++)
